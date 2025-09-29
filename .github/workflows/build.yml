@@ -1,4 +1,4 @@
-name: Build
+name: Build Iosevka
 
 on:
   workflow_dispatch:
@@ -20,12 +20,14 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install deps
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git gh zip
 
       - name: Run build script
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           chmod +x run.sh
           ./run.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
@@ -54,7 +56,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload zipped build artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Iosevka-build

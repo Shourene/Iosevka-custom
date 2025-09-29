@@ -14,9 +14,14 @@ echo "🔹 Using release tag: $RELEASE_TAG"
 echo "🔹 Checking if Iosevka source exists..."
 if [ ! -d "Iosevka" ]; then
   echo "Iosevka folder not found. Running setup..."
+  export GH_TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+  if [ -z "$GH_TOKEN" ]; then
+      echo "❌ GH_TOKEN not set, cannot run gh CLI. Exiting."
+      exit 1
+  fi
   gh workflow run setup.yml
   echo "Please re-run build after setup finishes."
-  exit 1
+  exit 0
 fi
 
 cd Iosevka
