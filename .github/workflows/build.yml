@@ -1,0 +1,40 @@
+name: Build Iosevka Custom
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Iosevka repo
+        uses: actions/checkout@v4
+        with:
+          repository: be5invis/Iosevka
+          submodules: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ttfautohint make gcc g++ python3 fontforge
+          npm install
+
+      - name: Copy build plan
+        run: |
+          cp ${{ github.workspace }}/../private-build-plans.toml ./private-build-plans.toml
+
+      - name: Build font
+        run: |
+          npx verda -f verdafile.mjs contents::myIosevka
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: iosevka-custom
+          path: dist/*
