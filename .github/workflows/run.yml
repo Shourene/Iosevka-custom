@@ -1,4 +1,4 @@
-name: Run Build
+name: Run Build Workflow
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
         required: true
         default: 'IosevkaCustom'
       build_targets:
-        description: 'Build targets (contents, ttf, ttf-unhinted)'
+        description: 'Build targets (contents,ttf,ttf-unhinted)'
         required: true
         default: 'contents'
 
@@ -17,34 +17,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git zip gh
-
-      - name: Check Iosevka dependencies
+      - name: Check dependencies
         id: check_deps
         run: |
           if [ ! -d "Iosevka" ] || [ ! -d "Iosevka/node_modules" ]; then
             echo "needs_setup=true" >> $GITHUB_OUTPUT
           else
             echo "needs_setup=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Run setup workflow if needed
+      - name: Run setup if needed
         if: steps.check_deps.outputs.needs_setup == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          gh workflow run setup.yml --repo "${GITHUB_REPOSITORY}" --ref "${GITHUB_REF:-main}"
-          echo "Setup workflow dispatched. Wait until it finishes before re-running build."
-          exit 0
-
-      - name: Run build script
-        if: steps.check_deps.outputs.needs_setup == 'false'
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          chmod +x build.sh
-          ./build.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
+        uses: ./.github/workflows/setup.yml
+      - name: Run build
+        uses: ./.github/workflows/build.yml
+        with:
+          build_plan: ${{ github.event.inputs.build_plan }}
+          build_targets: ${{ github.event.inputs.build_targets }}
