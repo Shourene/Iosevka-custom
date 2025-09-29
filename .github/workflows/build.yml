@@ -32,7 +32,7 @@ jobs:
       - name: Run build
         run: bash build.sh ${{ github.event.inputs.build_target }}
 
-      - name: Prepare update.md and artifacts
+      - name: Prepare artifacts
         run: |
           mkdir -p artifacts
           echo "### Build Log" > update.md
