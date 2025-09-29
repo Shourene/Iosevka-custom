@@ -11,10 +11,6 @@ on:
         description: 'Target build (pisahkan dengan koma, contoh: contents,ttf,unhinted)'
         required: true
         default: 'contents'
-      release_tag:
-        description: 'Tag untuk Release'
-        required: true
-        default: 'custom-build'
 
 jobs:
   build:
@@ -37,8 +33,7 @@ jobs:
 
       - name: Install build deps
         working-directory: Iosevka
-        run: |
-          pnpm install
+        run: pnpm install
 
       - name: Run build
         working-directory: Iosevka
@@ -55,16 +50,9 @@ jobs:
           name: fonts
           path: Iosevka/dist/*
 
-      - name: Delete old release if exists
-        uses: dev-drprasad/delete-tag-and-release@v1.1
-        with:
-          tag_name: ${{ github.event.inputs.release_tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.release_tag }}
-          name: "Iosevka Custom ${{ github.event.inputs.release_tag }}"
+          tag_name: custom-build
+          name: "Iosevka Build ${{ github.event.inputs.build_plan }}"
           files: Iosevka/dist/*
