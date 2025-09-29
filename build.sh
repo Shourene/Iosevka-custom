@@ -24,7 +24,6 @@ ZIP_FILE="../${RELEASE_TAG}.zip"
 echo "🔹 Creating zip file: $ZIP_FILE"
 zip -r "$ZIP_FILE" dist/*
 
-# Pengecekan release/tag agar hanya ada satu release
 REPO="${GITHUB_REPOSITORY:-$(git config --get remote.origin.url | sed 's#.*/##;s/.git$//')}"
 if command -v gh >/dev/null 2>&1 && [ -n "${GH_TOKEN:-}" ]; then
     if gh release view "$RELEASE_TAG" &>/dev/null || git ls-remote --tags https://github.com/$REPO.git | grep -q "$RELEASE_TAG"; then

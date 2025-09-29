@@ -26,6 +26,7 @@ jobs:
             echo "needs_setup=true" >> $GITHUB_OUTPUT
           else
             echo "needs_setup=false" >> $GITHUB_OUTPUT
+          fi
 
   setup:
     if: needs.check-deps.outputs.needs_setup == 'true'
