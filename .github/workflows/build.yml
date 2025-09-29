@@ -1,10 +1,10 @@
-name: Build Iosevka
+name: Build
 
 on:
   workflow_dispatch:
     inputs:
       build_plan:
-        description: 'Nama build plan'
+        description: 'Build plans name'
         required: true
         default: 'IosvekaCustom'
       build_targets:
@@ -16,7 +16,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.GH_PAT }}  # pastikan PAT dengan workflow permission tersedia
+      GH_TOKEN: ${{ secrets.GH_PAT }}
 
     steps:
       - name: Checkout repo
