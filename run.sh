@@ -42,9 +42,9 @@ done
 echo "🔹 Build finished, dist files:"
 ls -l dist/
 
-ZIP_FILE="../${RELEASE_TAG}.zip"
-echo "🔹 Creating zip file: $ZIP_FILE"
+ZIP_FILE="${GITHUB_WORKSPACE}/${RELEASE_TAG}.zip"
 zip -r "$ZIP_FILE" dist/*
+echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_ENV
 
 REPO="${GITHUB_REPOSITORY:-$(git config --get remote.origin.url | sed 's#.*/##;s/.git$//')}"
 if command -v gh >/dev/null 2>&1 && [ -n "${GH_TOKEN:-}" ]; then
