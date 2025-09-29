@@ -1,4 +1,4 @@
-name: Install Dependencies
+name: Setup
 
 on:
   workflow_dispatch:
@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       THREADS: ${{ steps.read_threads.outputs.threads }}
+      RELEASE_TAG: ${{ steps.read_release_tag.outputs.release_tag }}
 
     steps:
       - name: Checkout repo
@@ -22,17 +23,19 @@ jobs:
           restore-keys: |
             npm-cache-
 
-      - name: Install system deps
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git jq curl
+          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git zip
 
       - name: Clone Iosevka
         run: |
-          git clone --depth=1 https://github.com/be5invis/Iosevka.git
-          cp ./config/private-build-plans.toml Iosevka/private-build-plans.toml
+          if [ ! -d "Iosevka" ]; then
+            git clone --depth=1 https://github.com/be5invis/Iosevka.git
+            cp ./config/private-build-plans.toml Iosevka/private-build-plans.toml
+          fi
 
-      - name: Install npm deps
+      - name: Install npm dependencies
         working-directory: Iosevka
         run: npm install
 
@@ -41,3 +44,9 @@ jobs:
         run: |
           threads=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['threads'])")
           echo "threads=$threads" >> $GITHUB_OUTPUT
+
+      - name: Read release tag
+        id: read_release_tag
+        run: |
+          release_tag=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")
+          echo "release_tag=$release_tag" >> $GITHUB_OUTPUT

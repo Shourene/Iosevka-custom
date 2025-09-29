@@ -15,59 +15,61 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_PAT }}  # pastikan PAT dengan workflow permission tersedia
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git gh zip
+          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git zip
+
+      - name: Setup Iosevka if missing
+        run: |
+          if [ ! -d "Iosevka" ]; then
+            git clone --depth=1 https://github.com/be5invis/Iosevka.git
+            cp ./config/private-build-plans.toml Iosevka/private-build-plans.toml
+            cd Iosevka
+            npm install
+          fi
 
       - name: Run build script
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           chmod +x run.sh
           ./run.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
 
-      - name: Read release tag
-        id: read_tag
+      - name: Zip dist
         run: |
           RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")
-          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          zip -r "${RELEASE_TAG}.zip" Iosevka/dist/*
 
-      - name: Delete previous release and tag
-        run: |
-          TAG="${{ steps.read_tag.outputs.release_tag }}"
-          REPO="${GITHUB_REPOSITORY}"
-
-          RELEASE_EXISTS=$(gh release view "$TAG" &>/dev/null && echo "yes" || echo "no")
-          TAG_EXISTS=$(git ls-remote --tags https://github.com/$REPO.git | grep -q "$TAG" && echo "yes" || echo "no")
-
-          if [ "$RELEASE_EXISTS" = "yes" ] || [ "$TAG_EXISTS" = "yes" ]; then
-              echo "Deleting previous release/tag $TAG..."
-              gh release delete "$TAG" -y || echo "No release found"
-              git push origin --delete "$TAG" || echo "No remote tag to delete"
-          else
-              echo "No previous release/tag $TAG found, skipping deletion"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload artifact
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Iosevka-build
-          path: ${{ steps.read_tag.outputs.release_tag }}.zip
+          name: fonts
+          path: "${{ github.workspace }}/my-iosveka.zip"
+
+      - name: Delete previous release/tag if exists
+        run: |
+          RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")
+          REPO="${GITHUB_REPOSITORY}"
+          if gh release view "$RELEASE_TAG" &>/dev/null || git ls-remote --tags https://github.com/$REPO.git | grep -q "$RELEASE_TAG"; then
+              echo "Deleting previous release/tag $RELEASE_TAG..."
+              gh release delete "$RELEASE_TAG" -y || echo "No release found"
+              git push origin --delete "$RELEASE_TAG" || echo "No remote tag to delete"
+          else
+              echo "No previous release/tag $RELEASE_TAG found, skipping deletion"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "${{ steps.read_tag.outputs.release_tag }}"
+          tag_name: "$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")"
           name: "Iosevka Build ${{ github.event.inputs.build_plan }}"
-          files: ${{ steps.read_tag.outputs.release_tag }}.zip
+          files: "${{ github.workspace }}/my-iosveka.zip"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}

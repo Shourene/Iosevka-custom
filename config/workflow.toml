@@ -1,2 +1,2 @@
-threads = 4 # number of threads (2-4)
+threads = 4
 release_tag = "my-iosveka"

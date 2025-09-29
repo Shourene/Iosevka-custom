@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -euo pipefail
 
 BUILD_PLAN="${1:-IosvekaCustom}"
 BUILD_TARGETS="${2:-contents}"
@@ -11,17 +11,9 @@ RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('${CONFIG_DIR}
 echo "🔹 Using threads: $THREADS"
 echo "🔹 Using release tag: $RELEASE_TAG"
 
-echo "🔹 Checking if Iosevka source exists..."
 if [ ! -d "Iosevka" ]; then
-  echo "Iosevka folder not found. Running setup..."
-  export GH_TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
-  if [ -z "$GH_TOKEN" ]; then
-      echo "❌ GH_TOKEN not set, cannot run gh CLI. Exiting."
-      exit 1
-  fi
-  gh workflow run setup.yml
-  echo "Please re-run build after setup finishes."
-  exit 0
+  echo "Iosevka folder missing. Setup should run first!"
+  exit 1
 fi
 
 cd Iosevka
@@ -33,10 +25,6 @@ for target in "${TARGET_ARRAY[@]}"; do
     export JOBS=$THREADS
     npm run build -- "$target::$BUILD_PLAN"
 done
-
-ZIP_NAME="../${RELEASE_TAG}.zip"
-echo "🔹 Zipping build results into $ZIP_NAME..."
-zip -r "$ZIP_NAME" dist/*
 
 echo "🔹 Build finished, dist files:"
 ls -l dist/
