@@ -43,10 +43,14 @@ echo "🔹 Build finished, dist files:"
 ls -l dist/
 
 ZIP_FILE="${GITHUB_WORKSPACE}/${RELEASE_TAG}.zip"
+echo "🔹 Creating ZIP file: $ZIP_FILE"
 zip -r "$ZIP_FILE" dist/*
+
 echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_ENV
+echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
 
 REPO="${GITHUB_REPOSITORY:-$(git config --get remote.origin.url | sed 's#.*/##;s/.git$//')}"
+
 if command -v gh >/dev/null 2>&1 && [ -n "${GH_TOKEN:-}" ]; then
     if gh release view "$RELEASE_TAG" &>/dev/null || git ls-remote --tags https://github.com/$REPO.git | grep -q "$RELEASE_TAG"; then
         echo "Deleting previous release/tag $RELEASE_TAG..."

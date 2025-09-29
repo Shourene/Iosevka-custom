@@ -1,14 +1,14 @@
-name: Build
+name: Build Iosevka
 
 on:
   workflow_dispatch:
     inputs:
       build_plan:
-        description: 'Build plans name'
+        description: 'Build plan name'
         required: true
         default: 'IosevkaCustom'
       build_targets:
-        description: 'Build targets (contents,ttf,ttf-unhinted)'
+        description: 'Build targets (contents, ttf, ttf-unhinted)'
         required: true
         default: 'contents'
 
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install system dependencies
@@ -32,17 +32,14 @@ jobs:
         run: |
           chmod +x run.sh
           ./run.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
-          RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")
-          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
-          echo "ZIP_FILE=${RELEASE_TAG}.zip" >> $GITHUB_ENV
 
-      - name: Upload zip to artifact
+      - name: Upload ZIP to artifact
         uses: actions/upload-artifact@v4
         with:
           name: fonts
           path: ${{ env.ZIP_FILE }}
 
-        - name: Create GitHub Release and upload zip
+      - name: Create GitHub Release and upload ZIP
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "${{ env.RELEASE_TAG }}"
