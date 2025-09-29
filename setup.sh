@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
-echo "🔹 Installing system dependencies"
+echo "[INFO] Setup system dependencies..."
 sudo apt-get update
-sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git zip
+sudo apt-get install -y ttfautohint zip curl
 
-if [ ! -d "Iosevka" ]; then
-  echo "🔹 Cloning Iosevka..."
-  git clone --depth=1 https://github.com/be5invis/Iosevka.git
-  cp ./config/private-build-plans.toml Iosevka/private-build-plans.toml
-fi
+echo "[INFO] Install Node.js..."
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
 
-echo "🔹 Installing npm dependencies"
-cd Iosevka
-npm install
-cd ..
+echo "[INFO] System dependencies installed."

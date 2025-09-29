@@ -1,41 +1,31 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
-BUILD_PLAN="${1:-IosevkaCustom}"
-BUILD_TARGETS="${2:-contents}"
-CONFIG_DIR="./config"
+TARGET="$1"
 
-THREADS=$(python3 -c "import tomllib; print(tomllib.load(open('${CONFIG_DIR}/workflow.toml','rb'))['threads'])")
-RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('${CONFIG_DIR}/workflow.toml','rb'))['release_tag'])")
-
-echo "🔹 Using threads: $THREADS"
-echo "🔹 Using release tag: $RELEASE_TAG"
-
+echo "[INFO] Clone Iosevka repo..."
+rm -rf Iosevka
+git clone --depth=1 https://github.com/be5invis/Iosevka.git
 cd Iosevka
 
-IFS=',' read -ra TARGET_ARRAY <<< "$BUILD_TARGETS"
-for target in "${TARGET_ARRAY[@]}"; do
-    echo "➡️ Building $target::$BUILD_PLAN with $THREADS threads"
-    export JOBS=$THREADS
-    npm run build -- "$target::$BUILD_PLAN"
-done
+echo "[INFO] Copy private-build-plans.toml..."
+cp ../private-build-plans.toml .
 
-ZIP_FILE="../${RELEASE_TAG}.zip"
-echo "🔹 Creating zip file: $ZIP_FILE"
-zip -r "$ZIP_FILE" dist/*
-
-REPO="${GITHUB_REPOSITORY:-$(git config --get remote.origin.url | sed 's#.*/##;s/.git$//')}"
-if command -v gh >/dev/null 2>&1 && [ -n "${GH_TOKEN:-}" ]; then
-    if gh release view "$RELEASE_TAG" &>/dev/null || git ls-remote --tags https://github.com/$REPO.git | grep -q "$RELEASE_TAG"; then
-        echo "Deleting previous release/tag $RELEASE_TAG..."
-        gh release delete "$RELEASE_TAG" -y || echo "No release found"
-        git push origin --delete "$RELEASE_TAG" || echo "No remote tag to delete"
-    else
-        echo "No previous release/tag $RELEASE_TAG found, skipping deletion"
-    fi
+if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules)" ]; then
+  echo "[INFO] node_modules not found, running npm install..."
+  npm install
+else
+  echo "[INFO] Using cached node_modules"
 fi
 
-echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_ENV
-echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+echo "[INFO] Start building with target: $TARGET"
+npm run build -- "$TARGET::IosevkaCustom"
 
-echo "🔹 Finished building: $ZIP_FILE"
+echo "[INFO] Prepare output..."
+cd ..
+rm -rf output
+mkdir -p output
+cp -r Iosevka/dist/IosevkaCustom/* output/
+
+echo "[INFO] Compress output..."
+zip -r output/IosevkaCustom.zip output/*

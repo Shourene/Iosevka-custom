@@ -3,49 +3,66 @@ name: Build
 on:
   workflow_dispatch:
     inputs:
-      build_plan:
-        description: 'Build plan name'
+      build_target:
+        description: "Build target (contents, ttf, ttf-unhinted)"
         required: true
-        default: 'IosevkaCustom'
-      build_targets:
-        description: 'Build targets (contents,ttf,ttf-unhinted)'
-        required: true
-        default: 'contents'
+        default: "ttf"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git zip gh
-
-      - name: Run build script
-        id: run_build
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          chmod +x build.sh
-          ./build.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
-          # ambil output release_tag dan zip_file
-          RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")
-          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
-          echo "ZIP_FILE=${RELEASE_TAG}.zip" >> $GITHUB_ENV
-
-      - name: Upload zip to artifact
-        uses: actions/upload-artifact@v4
+      - name: Cache node_modules
+        id: cache-node
+        uses: actions/cache@v4
         with:
-          name: fonts
-          path: "${{ env.ZIP_FILE }}"
+          path: Iosevka/node_modules
+          key: ${{ runner.os }}-iosevka-${{ hashFiles('private-build-plans.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-iosevka-
 
-      - name: Create GitHub Release and upload zip
+      - name: Setup deps (cache miss)
+        if: steps.cache-node.outputs.cache-hit != 'true'
+        run: bash setup.sh
+
+      - name: Run build
+        run: bash build.sh ${{ github.event.inputs.build_target }}
+
+      - name: Prepare update.md
+        run: |
+          echo "### Build Log" > update.md
+          date +"%Y-%m-%d %H:%M:%S" >> update.md
+          echo -e "\n\`\`\`toml" >> update.md
+          cat private-build-plans.toml >> update.md
+          echo -e "\`\`\`" >> update.md
+
+      - name: Push to output branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git fetch origin
+          if git show-ref --verify --quiet refs/remotes/origin/output; then
+            git checkout output
+            rm -rf *
+          else
+            git checkout --orphan output
+          fi
+          cp output/IosevkaCustom.zip .
+          cp update.md .
+          git add .
+          git commit -m "Update build $(date)"
+          git push origin output --force
+
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "${{ env.RELEASE_TAG }}"
-          name: "Iosevka Build ${{ github.event.inputs.build_plan }}"
-          files: "${{ env.ZIP_FILE }}"
+          files: output/IosevkaCustom.zip
+          tag_name: ${{ github.run_number }}
+          name: "Release ${{ github.run_number }}"
+          body_path: update.md
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
