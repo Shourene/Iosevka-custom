@@ -13,11 +13,12 @@ on:
         default: 'contents'
 
 jobs:
-  run:
+  check-deps:
     runs-on: ubuntu-latest
+    outputs:
+      needs_setup: ${{ steps.check_deps.outputs.needs_setup }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Check dependencies
         id: check_deps
         run: |
@@ -26,14 +27,13 @@ jobs:
           else
             echo "needs_setup=false" >> $GITHUB_OUTPUT
 
-      - name: Run setup if needed
-        if: steps.check_deps.outputs.needs_setup == 'true'
-        uses: ./.github/workflows/setup.yml
-        with:
-          # bisa tambahkan input jika diperlukan
+  setup:
+    if: needs.check-deps.outputs.needs_setup == 'true'
+    uses: ./.github/workflows/setup.yml
 
-      - name: Run build
-        uses: ./.github/workflows/build.yml
-        with:
-          build_plan: ${{ github.event.inputs.build_plan }}
-          build_targets: ${{ github.event.inputs.build_targets }}
+  build:
+    needs: [check-deps, setup]
+    uses: ./.github/workflows/build.yml
+    with:
+      build_plan: ${{ github.event.inputs.build_plan }}
+      build_targets: ${{ github.event.inputs.build_targets }}
