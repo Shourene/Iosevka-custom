@@ -2,36 +2,16 @@ name: Build Iosevka
 
 on:
   workflow_dispatch:
-    inputs:
-      build_plan:
-        description: 'Build plan name'
-        required: true
-        default: 'IosevkaCustom'
-      build_targets:
-        description: 'Build targets (contents, ttf, ttf-unhinted)'
-        required: true
-        default: 'contents'
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git zip gh
-
-      - name: Run build script
-        id: run_build
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          chmod +x run.sh
-          ./run.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
+      - name: Install zip & gh
+        run: sudo apt-get update && sudo apt-get install -y zip gh
 
       - name: Upload ZIP to artifact
         uses: actions/upload-artifact@v4
@@ -39,11 +19,11 @@ jobs:
           name: fonts
           path: ${{ env.ZIP_FILE }}
 
-      - name: Create GitHub Release and upload ZIP
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "${{ env.RELEASE_TAG }}"
-          name: "Build ${{ github.event.inputs.build_plan }}"
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "Build ${{ env.RELEASE_TAG }}"
           files: ${{ env.ZIP_FILE }}
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
