@@ -1,4 +1,4 @@
-name: Setup Dependencies
+name: Setup
 
 on:
   workflow_dispatch:

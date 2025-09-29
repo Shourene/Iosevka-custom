@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BUILD_PLAN="${1:-IosvekaCustom}"
+BUILD_PLAN="${1:-IosevkaCustom}"
 BUILD_TARGETS="${2:-contents}"
 CONFIG_DIR="./config"
 
@@ -24,7 +24,7 @@ if [ ! -d "Iosevka" ] || [ ! -d "Iosevka/node_modules" ]; then
     exit 1
   fi
 
-  gh workflow run setup.yml --repo "${GITHUB_REPOSITORY}" --ref "${GITHUB_REF:-main}" 
+  gh workflow run setup.yml --repo "${GITHUB_REPOSITORY}" --ref "${GITHUB_REF:-main}"
   echo "Setup workflow dispatched. Please wait until it finishes before re-running build."
   exit 0
 fi

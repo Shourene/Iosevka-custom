@@ -1,4 +1,4 @@
-name: Build Iosevka
+name: Build
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
       build_plan:
         description: 'Build plans name'
         required: true
-        default: 'IosvekaCustom'
+        default: 'IosevkaCustom'
       build_targets:
         description: 'Build targets (contents,ttf,ttf-unhinted)'
         required: true
