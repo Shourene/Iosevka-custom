@@ -1,0 +1,43 @@
+name: Setup Iosevka Dependencies
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      THREADS: ${{ steps.read_threads.outputs.threads }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Cache npm
+        id: cache-node
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: npm-cache-${{ hashFiles('Iosevka/package-lock.json') }}
+          restore-keys: |
+            npm-cache-
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git jq curl
+
+      - name: Clone Iosevka
+        run: |
+          git clone --depth=1 https://github.com/be5invis/Iosevka.git
+          cp ./config/private-build-plans.toml Iosevka/private-build-plans.toml
+
+      - name: Install npm deps
+        working-directory: Iosevka
+        run: npm install
+
+      - name: Read threads config
+        id: read_threads
+        run: |
+          threads=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['threads'])")
+          echo "threads=$threads" >> $GITHUB_OUTPUT

@@ -1,4 +1,4 @@
-name: Build Iosevka Custom
+name: Build Iosevka
 
 on:
   workflow_dispatch:
@@ -21,17 +21,42 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup GitHub CLI
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gh
+        run: sudo apt-get install -y gh
 
-      - name: Run setup + build
+      # Delete previous release/tag jika ada
+      - name: Delete previous release and tag
+        run: |
+          TAG="build-${{ github.run_id }}-$(date +'%Y%m%d')"
+          REPO="${GITHUB_REPOSITORY}"
+          if gh release view "$TAG" &>/dev/null || git ls-remote --tags https://github.com/$REPO.git | grep -q "$TAG"; then
+              echo "Deleting previous release/tag $TAG..."
+              gh release delete "$TAG" -y || echo "No release found"
+              git push origin --delete "$TAG" || echo "No remote tag to delete"
+          else
+              echo "No previous release/tag $TAG found, skipping deletion"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Run build via run.sh
+      - name: Run build script
         run: |
           chmod +x run.sh
           ./run.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
 
+      # Upload build artifacts as GH artifacts (optional)
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: fonts-${{ github.event.inputs.build_plan }}
           path: Iosevka/dist/*
+
+      # Create GitHub Release and upload built fonts
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "build-${{ github.run_id }}-$(date +'%Y%m%d')"
+          name: "Iosevka Build ${{ github.event.inputs.build_plan }}"
+          files: Iosevka/dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

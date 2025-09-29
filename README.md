@@ -1,1 +1,1 @@
-# Simple Iosveka Buikdel using GH Actionso
+# Iosveka Buikder using GH Actions
