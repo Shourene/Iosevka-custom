@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Check dependencies
         id: check_deps
         run: |
@@ -24,9 +25,13 @@ jobs:
             echo "needs_setup=true" >> $GITHUB_OUTPUT
           else
             echo "needs_setup=false" >> $GITHUB_OUTPUT
+
       - name: Run setup if needed
         if: steps.check_deps.outputs.needs_setup == 'true'
         uses: ./.github/workflows/setup.yml
+        with:
+          # bisa tambahkan input jika diperlukan
+
       - name: Run build
         uses: ./.github/workflows/build.yml
         with:
