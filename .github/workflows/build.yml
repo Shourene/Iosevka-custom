@@ -8,7 +8,7 @@ on:
         required: true
         default: 'IosvekaCustom'
       build_targets:
-        description: 'Target build (pisahkan dengan koma, contoh: contents,ttf,unhinted)'
+        description: 'Target build (pisahkan dengan koma, contoh: contents,ttf,ttf-unhinted)'
         required: true
         default: 'contents'
 
@@ -17,42 +17,60 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout repo kamu (yang berisi private-build-plans.toml)
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install deps
+      # Install system dependencies
+      - name: Install system deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip
-          npm install -g pnpm
+          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git
 
+      # Clone Iosevka official source
       - name: Clone Iosevka source
         run: |
           git clone --depth=1 https://github.com/be5invis/Iosevka.git
-          cp private-build-plans.toml Iosevka/private-build-plans.toml
+          cp ./private-build-plans.toml Iosevka/private-build-plans.toml
 
+      # Install npm dependencies
       - name: Install build deps
         working-directory: Iosevka
-        run: pnpm install
+        run: npm install
 
+      # Run build for each target
       - name: Run build
         working-directory: Iosevka
         run: |
-          IFS=',' read -ra TARGETS <<< "${{ github.event.inputs.build_targets }}"
-          for target in "${TARGETS[@]}"; do
+          TARGETS=$(echo "${{ github.event.inputs.build_targets }}" | tr -d ' ')
+          IFS=',' read -ra TARGET_ARRAY <<< "$TARGETS"
+          for target in "${TARGET_ARRAY[@]}"; do
             echo "➡️ Building $target::${{ github.event.inputs.build_plan }}"
-            pnpm build --targets $target::${{ github.event.inputs.build_plan }}
+            npm run build -- "$target::${{ github.event.inputs.build_plan }}"
           done
 
-      - name: Upload artifacts
+      # Upload build result to Artifacts
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: fonts
+          name: fonts-${{ github.event.inputs.build_plan }}
           path: Iosevka/dist/*
 
-      - name: Create Release
+      # Delete old release/tag (jika ada)
+      - name: Delete previous release and tag
+        uses: dev-drprasad/delete-tag-and-release@v1.1
+        with:
+          tag_name: "build-${{ github.run_id }}-$(date +'%Y%m%d')"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Create GitHub Release
+      - name: Create GitHub Release
+        id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: custom-build
+          tag_name: "build-${{ github.run_id }}-$(date +'%Y%m%d')"
           name: "Iosevka Build ${{ github.event.inputs.build_plan }}"
           files: Iosevka/dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
