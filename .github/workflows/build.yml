@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       build_plan:
-        description: 'Nama build plan (sesuai di private-build-plans.toml)'
+        description: 'Nama build plan'
         required: true
         default: 'IosvekaCustom'
       build_targets:
-        description: 'Target build (pisahkan dengan koma, contoh: contents,ttf,ttf-unhinted)'
+        description: 'Target build (pisahkan koma, contoh: contents,ttf,ttf-unhinted)'
         required: true
         default: 'contents'
 
@@ -17,77 +17,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout repo (termasuk private-build-plans.toml & workflow-config.toml)
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # Install system dependencies
-      - name: Install system deps
+      - name: Setup GitHub CLI
         run: |
           sudo apt-get update
-          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git jq curl
+          sudo apt-get install -y gh
 
-      # Clone Iosevka official source
-      - name: Clone Iosevka source
+      - name: Run setup + build
         run: |
-          git clone --depth=1 https://github.com/be5invis/Iosevka.git
-          cp ./private-build-plans.toml Iosevka/private-build-plans.toml
+          chmod +x run.sh
+          ./run.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
 
-      # Install npm dependencies
-      - name: Install build deps
-        working-directory: Iosevka
-        run: npm install
-
-      # Read threads from workflow-config.toml
-      - name: Read threads config
-        id: threads_config
-        run: |
-          threads=$(python3 -c "import tomllib; print(tomllib.load(open('workflow-config.toml'))['threads'])")
-          echo "THREADS=$threads" >> $GITHUB_ENV
-
-      # Run build for each target
-      - name: Run build
-        working-directory: Iosevka
-        run: |
-          TARGETS=$(echo "${{ github.event.inputs.build_targets }}" | tr -d ' ')
-          IFS=',' read -ra TARGET_ARRAY <<< "$TARGETS"
-          for target in "${TARGET_ARRAY[@]}"; do
-            echo "➡️ Building $target::${{ github.event.inputs.build_plan }} with $THREADS threads"
-            export JOBS=$THREADS
-            npm run build -- "$target::${{ github.event.inputs.build_plan }}"
-          done
-
-      # Upload build result to Artifacts
-      - name: Upload Artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: fonts-${{ github.event.inputs.build_plan }}
           path: Iosevka/dist/*
-
-      # Delete old release/tag if exists
-      - name: Delete previous release and tag if exists
-        run: |
-          TAG="build-${{ github.run_id }}-$(date +'%Y%m%d')"
-          REPO="${GITHUB_REPOSITORY}"
-          # Cek apakah tag ada
-          if git ls-remote --tags https://github.com/$REPO.git | grep -q "$TAG"; then
-            echo "Tag $TAG exists, deleting..."
-            gh release delete "$TAG" -y || echo "No release found for $TAG"
-            git push origin --delete "$TAG" || echo "No remote tag to delete"
-          else
-            echo "Tag $TAG does not exist, skipping deletion"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-
-      # Create GitHub Release
-      - name: Create GitHub Release
-        id: create_release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "build-${{ github.run_id }}-$(date +'%Y%m%d')"
-          name: "Iosevka Build ${{ github.event.inputs.build_plan }}"
-          files: Iosevka/dist/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
