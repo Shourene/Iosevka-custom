@@ -12,7 +12,7 @@ echo "🔹 Using threads: $THREADS"
 echo "🔹 Using release tag: $RELEASE_TAG"
 
 if [ ! -d "Iosevka" ]; then
-  echo "Iosevka folder missing. Setup should run first!"
+  echo "Iosevka folder not found. Running setup..."
   exit 1
 fi
 
@@ -28,3 +28,20 @@ done
 
 echo "🔹 Build finished, dist files:"
 ls -l dist/
+
+ZIP_FILE="../${RELEASE_TAG}.zip"
+echo "🔹 Creating zip file: $ZIP_FILE"
+zip -r "$ZIP_FILE" dist/*
+
+REPO="${GITHUB_REPOSITORY:-$(git config --get remote.origin.url | sed 's#.*/##;s/.git$//')}"
+if command -v gh >/dev/null 2>&1; then
+    if gh release view "$RELEASE_TAG" &>/dev/null || git ls-remote --tags https://github.com/$REPO.git | grep -q "$RELEASE_TAG"; then
+        echo "Deleting previous release/tag $RELEASE_TAG..."
+        gh release delete "$RELEASE_TAG" -y || echo "No release found"
+        git push origin --delete "$RELEASE_TAG" || echo "No remote tag to delete"
+    else
+        echo "No previous release/tag $RELEASE_TAG found, skipping deletion"
+    fi
+fi
+
+echo "🔹 Finished build"

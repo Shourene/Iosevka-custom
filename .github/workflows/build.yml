@@ -1,4 +1,4 @@
-name: Build
+name: Build Iosevka
 
 on:
   workflow_dispatch:
@@ -23,51 +23,38 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git zip
+          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git zip gh
 
       - name: Setup Iosevka if missing
         run: |
           if [ ! -d "Iosevka" ]; then
-            git clone --depth=1 https://github.com/be5invis/Iosevka.git
-            cp ./config/private-build-plans.toml Iosevka/private-build-plans.toml
-            cd Iosevka
-            npm install
+            echo "Iosevka folder not found. Please run setup.yml first."
+            exit 1
           fi
 
       - name: Run build script
+        id: run_build
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           chmod +x run.sh
           ./run.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
-
-      - name: Zip dist
-        run: |
+          # Export RELEASE_TAG untuk step berikutnya
           RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")
-          zip -r "${RELEASE_TAG}.zip" Iosevka/dist/*
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          echo "ZIP_FILE=${RELEASE_TAG}.zip" >> $GITHUB_ENV
 
-      - name: Upload build artifact
+      - name: Upload zip to artifact
         uses: actions/upload-artifact@v4
         with:
           name: fonts
-          path: "${{ github.workspace }}/my-iosveka.zip"
+          path: "${{ github.workspace }}/${{ env.ZIP_FILE }}"
 
-      - name: Delete previous release/tag if exists
-        run: |
-          RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")
-          REPO="${GITHUB_REPOSITORY}"
-          if gh release view "$RELEASE_TAG" &>/dev/null || git ls-remote --tags https://github.com/$REPO.git | grep -q "$RELEASE_TAG"; then
-              echo "Deleting previous release/tag $RELEASE_TAG..."
-              gh release delete "$RELEASE_TAG" -y || echo "No release found"
-              git push origin --delete "$RELEASE_TAG" || echo "No remote tag to delete"
-          else
-              echo "No previous release/tag $RELEASE_TAG found, skipping deletion"
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-
-      - name: Create GitHub Release
+      - name: Create GitHub Release and upload zip
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")"
+          tag_name: "${{ env.RELEASE_TAG }}"
           name: "Iosevka Build ${{ github.event.inputs.build_plan }}"
-          files: "${{ github.workspace }}/my-iosveka.zip"
+          files: "${{ github.workspace }}/${{ env.ZIP_FILE }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
