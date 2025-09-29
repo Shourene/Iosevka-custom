@@ -32,18 +32,23 @@ jobs:
       - name: Run build
         run: bash build.sh ${{ github.event.inputs.build_target }}
 
-      - name: Prepare update.md
+      - name: Prepare update.md and artifacts
         run: |
+          mkdir -p artifacts
           echo "### Build Log" > update.md
           date +"%Y-%m-%d %H:%M:%S" >> update.md
           echo -e "\n\`\`\`toml" >> update.md
           cat private-build-plans.toml >> update.md
           echo -e "\`\`\`" >> update.md
 
+          cp output/IosevkaCustom.zip artifacts/
+          cp update.md artifacts/
+
       - name: Push to output branch
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+
           git fetch origin
           if git show-ref --verify --quiet refs/remotes/origin/output; then
             git checkout output
@@ -51,8 +56,8 @@ jobs:
           else
             git checkout --orphan output
           fi
-          cp output/IosevkaCustom.zip .
-          cp update.md .
+
+          cp artifacts/* .
           git add .
           git commit -m "Update build $(date)"
           git push origin output --force
@@ -60,9 +65,9 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: output/IosevkaCustom.zip
+          files: artifacts/IosevkaCustom.zip
           tag_name: ${{ github.run_number }}
           name: "Release ${{ github.run_number }}"
-          body_path: update.md
+          body_path: artifacts/update.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
