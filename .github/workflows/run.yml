@@ -1,4 +1,4 @@
-name: Run Build Workflow
+name: Run Build
 
 on:
   workflow_dispatch:

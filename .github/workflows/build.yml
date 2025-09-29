@@ -2,11 +2,6 @@ name: Build
 
 on:
   workflow_call:
-    inputs:
-      build_plan:
-        required: true
-      build_targets:
-        required: true
 
 jobs:
   build:
