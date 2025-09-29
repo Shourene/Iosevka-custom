@@ -1,18 +1,25 @@
-name: Build Iosevka Custom
+name: Iosevka Custom Build
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: "Target build (misal: contents::myIosevka, ttf::myIosevka, unhinted-ttf::myIosevka)"
+        required: true
+        default: "contents::myIosevka"
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Iosevka repo
+      - name: Checkout your repo
         uses: actions/checkout@v4
-        with:
-          repository: be5invis/Iosevka
-          submodules: true
+
+      - name: Clone Iosevka source
+        run: |
+          git clone --depth=1 https://github.com/be5invis/Iosevka.git
+          cp ./private-build-plans.toml Iosevka/private-build-plans.toml
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -23,18 +30,36 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ttfautohint make gcc g++ python3 fontforge
+          cd Iosevka
           npm install
-
-      - name: Copy build plan
-        run: |
-          cp ${{ github.workspace }}/../private-build-plans.toml ./private-build-plans.toml
 
       - name: Build font
         run: |
-          npx verda -f verdafile.mjs contents::myIosevka
+          cd Iosevka
+          npx verda -f verdafile.mjs ${{ github.event.inputs.target }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: iosevka-custom
-          path: dist/*
+          path: Iosevka/dist/*
+
+      - name: Delete previous release
+        uses: dev-drprasad/delete-older-releases@v0.3.3
+        with:
+          keep_latest: 0
+          delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: custom
+          name: Custom Iosevka Build
+          body: |
+            Build target: `${{ github.event.inputs.target }}`
+            Generated at run ID: ${{ github.run_id }}
+          files: Iosevka/dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
