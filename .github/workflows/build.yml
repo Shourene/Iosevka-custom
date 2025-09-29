@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout repo kamu (yang berisi private-build-plans.toml)
+      # Checkout repo (termasuk private-build-plans.toml & workflow-config.toml)
       - name: Checkout repo
         uses: actions/checkout@v4
 
@@ -25,7 +25,7 @@ jobs:
       - name: Install system deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git
+          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git jq curl
 
       # Clone Iosevka official source
       - name: Clone Iosevka source
@@ -38,6 +38,13 @@ jobs:
         working-directory: Iosevka
         run: npm install
 
+      # Read threads from workflow-config.toml
+      - name: Read threads config
+        id: threads_config
+        run: |
+          threads=$(python3 -c "import tomllib; print(tomllib.load(open('workflow-config.toml'))['threads'])")
+          echo "THREADS=$threads" >> $GITHUB_ENV
+
       # Run build for each target
       - name: Run build
         working-directory: Iosevka
@@ -45,7 +52,8 @@ jobs:
           TARGETS=$(echo "${{ github.event.inputs.build_targets }}" | tr -d ' ')
           IFS=',' read -ra TARGET_ARRAY <<< "$TARGETS"
           for target in "${TARGET_ARRAY[@]}"; do
-            echo "➡️ Building $target::${{ github.event.inputs.build_plan }}"
+            echo "➡️ Building $target::${{ github.event.inputs.build_plan }} with $THREADS threads"
+            export JOBS=$THREADS
             npm run build -- "$target::${{ github.event.inputs.build_plan }}"
           done
 
@@ -56,13 +64,22 @@ jobs:
           name: fonts-${{ github.event.inputs.build_plan }}
           path: Iosevka/dist/*
 
-      # Delete old release/tag (jika ada)
-      - name: Delete previous release and tag
-        uses: dev-drprasad/delete-tag-and-release@v1.1
-        with:
-          tag_name: "build-${{ github.run_id }}-$(date +'%Y%m%d')"
+      # Delete old release/tag if exists
+      - name: Delete previous release and tag if exists
+        run: |
+          TAG="build-${{ github.run_id }}-$(date +'%Y%m%d')"
+          REPO="${GITHUB_REPOSITORY}"
+          # Cek apakah tag ada
+          if git ls-remote --tags https://github.com/$REPO.git | grep -q "$TAG"; then
+            echo "Tag $TAG exists, deleting..."
+            gh release delete "$TAG" -y || echo "No release found for $TAG"
+            git push origin --delete "$TAG" || echo "No remote tag to delete"
+          else
+            echo "Tag $TAG does not exist, skipping deletion"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
 
       # Create GitHub Release
       - name: Create GitHub Release
