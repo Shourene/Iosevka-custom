@@ -12,13 +12,21 @@ echo "🔹 Using threads: $THREADS"
 echo "🔹 Using release tag: $RELEASE_TAG"
 
 if [ ! -d "Iosevka" ] || [ ! -d "Iosevka/node_modules" ]; then
-  echo "Iosevka folder or dependencies not found. Running setup..."
-  if [ ! -x "./setup.sh" ]; then
-    echo "setup.sh not found or not executable"
+  echo "Iosevka folder or dependencies not found. Running setup workflow..."
+
+  if ! command -v gh >/dev/null 2>&1; then
+    echo "Error: GitHub CLI (gh) not installed"
     exit 1
   fi
-  chmod +x setup.sh
-  ./setup.sh
+
+  if [ -z "${GH_TOKEN:-}" ]; then
+    echo "Error: GH_TOKEN not set. Create a PAT with repo+workflow scope and set it as GH_TOKEN"
+    exit 1
+  fi
+
+  gh workflow run setup.yml --repo "${GITHUB_REPOSITORY}" --ref "${GITHUB_REF:-main}" 
+  echo "Setup workflow dispatched. Please wait until it finishes before re-running build."
+  exit 0
 fi
 
 cd Iosevka
