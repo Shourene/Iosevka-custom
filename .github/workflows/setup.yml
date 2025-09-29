@@ -1,7 +1,4 @@
-name: Setup
-
-on:
-  workflow_dispatch:
+name: Setup Dependencies
 
 jobs:
   setup:

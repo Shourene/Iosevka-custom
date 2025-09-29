@@ -1,4 +1,4 @@
-name: Build Iosevka
+name: Build
 
 on:
   workflow_dispatch:
@@ -25,13 +25,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git zip gh
 
-      - name: Setup Iosevka if missing
-        run: |
-          if [ ! -d "Iosevka" ]; then
-            echo "Iosevka folder not found. Please run setup.yml first."
-            exit 1
-          fi
-
       - name: Run build script
         id: run_build
         env:
@@ -39,7 +32,6 @@ jobs:
         run: |
           chmod +x run.sh
           ./run.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
-          # Export RELEASE_TAG untuk step berikutnya
           RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")
           echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
           echo "ZIP_FILE=${RELEASE_TAG}.zip" >> $GITHUB_ENV
