@@ -1,33 +1,51 @@
 name: Build
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       build_plan:
+        description: 'Build plan name'
         required: true
-        type: string
+        default: 'IosevkaCustom'
       build_targets:
+        description: 'Build targets (contents,ttf,ttf-unhinted)'
         required: true
-        type: string
+        default: 'contents'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install zip & gh
-        run: sudo apt-get update && sudo apt-get install -y zip gh
-      - name: Run build.sh
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git zip gh
+
+      - name: Run build script
+        id: run_build
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           chmod +x build.sh
-          ./build.sh "${{ inputs.build_plan }}" "${{ inputs.build_targets }}"
-      - name: Upload artifact & release
+          ./build.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
+          # ambil output release_tag dan zip_file
+          RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          echo "ZIP_FILE=${RELEASE_TAG}.zip" >> $GITHUB_ENV
+
+      - name: Upload zip to artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fonts
+          path: "${{ env.ZIP_FILE }}"
+
+      - name: Create GitHub Release and upload zip
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          name: "Build ${{ env.RELEASE_TAG }}"
-          files: ${{ env.ZIP_FILE }}
+          tag_name: "${{ env.RELEASE_TAG }}"
+          name: "Iosevka Build ${{ github.event.inputs.build_plan }}"
+          files: "${{ env.ZIP_FILE }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}

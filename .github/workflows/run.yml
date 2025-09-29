@@ -13,12 +13,13 @@ on:
         default: 'contents'
 
 jobs:
-  check-deps:
+  check-and-setup:
     runs-on: ubuntu-latest
     outputs:
-      needs_setup: ${{ steps.check_deps.outputs.needs_setup }}
+      setup_done: ${{ steps.set_output.outputs.setup_done }}
     steps:
       - uses: actions/checkout@v4
+
       - name: Check dependencies
         id: check_deps
         run: |
@@ -28,13 +29,15 @@ jobs:
             echo "needs_setup=false" >> $GITHUB_OUTPUT
           fi
 
-  setup:
-    if: needs.check-deps.outputs.needs_setup == 'true'
-    uses: ./.github/workflows/setup.yml
-
-  build:
-    needs: [check-deps, setup]
-    uses: ./.github/workflows/build.yml
-    with:
-      build_plan: ${{ github.event.inputs.build_plan }}
-      build_targets: ${{ github.event.inputs.build_targets }}
+      - name: Run setup if needed
+        id: set_output
+        run: |
+          if [ "${{ steps.check_deps.outputs.needs_setup }}" == "true" ]; then
+            echo "Running setup.sh..."
+            chmod +x setup.sh
+            ./setup.sh
+            echo "setup_done=true" >> $GITHUB_OUTPUT
+          else
+            echo "Setup not needed"
+            echo "setup_done=false" >> $GITHUB_OUTPUT
+          fi
