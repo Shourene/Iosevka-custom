@@ -1,31 +1,31 @@
-[buildPlans.IosevkaCustom]
+[buildPlans.myIosveka]
 family = "Iosevka Custom"
 spacing = "fontconfig-mono"
 serifs = "slab"
 noCvSs = true
 exportGlyphNames = false
 
-[buildPlans.IosevkaCustom.weights.Regular]
+[buildPlans.myIosveka.weights.Regular]
 shape = 400
 menu = 400
 css = 400
 
-[buildPlans.IosevkaCustom.weights.Light]
+[buildPlans.myIosveka.weights.Light]
 shape = 300
 menu = 300
 css = 300
 
-[buildPlans.IosevkaCustom.widths.Normal]
+[buildPlans.myIosveka.widths.Normal]
 shape = 500
 menu = 5
 css = "normal"
 
-[buildPlans.IosevkaCustom.widths.SemiCondensed]
+[buildPlans.myIosveka.widths.SemiCondensed]
 shape = 456
 menu = 4
 css = "semi-condensed"
 
-[buildPlans.IosevkaCustom.slopes.Upright]
+[buildPlans.myIosveka.slopes.Upright]
 angle = 0
 shape = "upright"
 menu = "upright"
