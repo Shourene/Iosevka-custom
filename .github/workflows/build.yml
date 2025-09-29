@@ -1,4 +1,4 @@
-name: Build Iosevka
+name: Build
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
         required: true
         default: 'IosvekaCustom'
       build_targets:
-        description: 'Target build (pisahkan koma, contoh: contents,ttf,ttf-unhinted)'
+        description: 'Build targets (contents,ttf,ttf-unhinted)'
         required: true
         default: 'contents'
 
@@ -20,43 +20,52 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup GitHub CLI
-        run: sudo apt-get install -y gh
-
-      # Delete previous release/tag jika ada
-      - name: Delete previous release and tag
+      - name: Install deps
         run: |
-          TAG="build-${{ github.run_id }}-$(date +'%Y%m%d')"
-          REPO="${GITHUB_REPOSITORY}"
-          if gh release view "$TAG" &>/dev/null || git ls-remote --tags https://github.com/$REPO.git | grep -q "$TAG"; then
-              echo "Deleting previous release/tag $TAG..."
-              gh release delete "$TAG" -y || echo "No release found"
-              git push origin --delete "$TAG" || echo "No remote tag to delete"
-          else
-              echo "No previous release/tag $TAG found, skipping deletion"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          sudo apt-get update
+          sudo apt-get install -y nodejs npm ttfautohint fontforge python3-pip git gh zip
 
-      # Run build via run.sh
       - name: Run build script
         run: |
           chmod +x run.sh
           ./run.sh "${{ github.event.inputs.build_plan }}" "${{ github.event.inputs.build_targets }}"
 
-      # Upload build artifacts as GH artifacts (optional)
-      - name: Upload build artifacts
+      - name: Read release tag
+        id: read_tag
+        run: |
+          RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('config/workflow.toml','rb'))['release_tag'])")
+          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Delete previous release and tag
+        run: |
+          TAG="${{ steps.read_tag.outputs.release_tag }}"
+          REPO="${GITHUB_REPOSITORY}"
+
+          RELEASE_EXISTS=$(gh release view "$TAG" &>/dev/null && echo "yes" || echo "no")
+          TAG_EXISTS=$(git ls-remote --tags https://github.com/$REPO.git | grep -q "$TAG" && echo "yes" || echo "no")
+
+          if [ "$RELEASE_EXISTS" = "yes" ] || [ "$TAG_EXISTS" = "yes" ]; then
+              echo "Deleting previous release/tag $TAG..."
+              gh release delete "$TAG" -y || echo "No release found"
+              git push origin --delete "$TAG" || echo "No remote tag to delete"
+          else
+              echo "No previous release/tag $TAG found, skipping deletion"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload zipped build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fonts-${{ github.event.inputs.build_plan }}
-          path: Iosevka/dist/*
+          name: Iosevka-build
+          path: ${{ steps.read_tag.outputs.release_tag }}.zip
 
-      # Create GitHub Release and upload built fonts
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "build-${{ github.run_id }}-$(date +'%Y%m%d')"
+          tag_name: "${{ steps.read_tag.outputs.release_tag }}"
           name: "Iosevka Build ${{ github.event.inputs.build_plan }}"
-          files: Iosevka/dist/*
+          files: ${{ steps.read_tag.outputs.release_tag }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

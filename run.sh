@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euxo pipefail
 
 BUILD_PLAN="${1:-IosvekaCustom}"
 BUILD_TARGETS="${2:-contents}"
 CONFIG_DIR="./config"
-THREADS="${THREADS:-2}"  # fallback jika env tidak tersedia
+
+THREADS=$(python3 -c "import tomllib; print(tomllib.load(open('${CONFIG_DIR}/workflow.toml','rb'))['threads'])")
+RELEASE_TAG=$(python3 -c "import tomllib; print(tomllib.load(open('${CONFIG_DIR}/workflow.toml','rb'))['release_tag'])")
+
+echo "🔹 Using threads: $THREADS"
+echo "🔹 Using release tag: $RELEASE_TAG"
 
 echo "🔹 Checking if Iosevka source exists..."
 if [ ! -d "Iosevka" ]; then
@@ -23,6 +28,10 @@ for target in "${TARGET_ARRAY[@]}"; do
     export JOBS=$THREADS
     npm run build -- "$target::$BUILD_PLAN"
 done
+
+ZIP_NAME="../${RELEASE_TAG}.zip"
+echo "🔹 Zipping build results into $ZIP_NAME..."
+zip -r "$ZIP_NAME" dist/*
 
 echo "🔹 Build finished, dist files:"
 ls -l dist/
