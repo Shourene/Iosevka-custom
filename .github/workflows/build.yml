@@ -8,6 +8,9 @@ on:
         required: true
         default: "ttf"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,7 +24,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Iosevka/node_modules
-          key: ${{ runner.os }}-iosevka-${{ hashFiles('private-build-plans.toml') }}
+          key: ${{ runner.os }}-iosevka-${{ hashFiles('Iosevka/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-iosevka-
 
@@ -36,7 +39,7 @@ jobs:
         run: |
           mkdir -p artifacts
           echo "### Build Log" > artifacts/update.md
-          date +"%Y-%m-%d %H:%M:%S" >> artifacts/update.md
+          date -u +"%Y-%m-%d %H:%M:%S UTC" >> artifacts/update.md
           echo -e "\n\`\`\`toml" >> artifacts/update.md
           cat private-build-plans.toml >> artifacts/update.md
           echo -e "\`\`\`" >> artifacts/update.md
@@ -57,8 +60,8 @@ jobs:
           fi
 
           cp artifacts/* .
-          git add IosevkaCustom.zip update.md
-          git commit -m "Update build $(date)"
+          git add -f IosevkaCustom.zip update.md
+          git commit -m "Update build $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
           git push origin output --force
 
       - name: Create Release
