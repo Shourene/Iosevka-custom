@@ -1,4 +1,4 @@
-name: Build
+name: Build Custom Iosevka
 
 on:
   workflow_dispatch:
@@ -35,16 +35,15 @@ jobs:
       - name: Prepare artifacts
         run: |
           mkdir -p artifacts
-          echo "### Build Log" > update.md
-          date +"%Y-%m-%d %H:%M:%S" >> update.md
-          echo -e "\n\`\`\`toml" >> update.md
-          cat private-build-plans.toml >> update.md
-          echo -e "\`\`\`" >> update.md
+          echo "### Build Log" > artifacts/update.md
+          date +"%Y-%m-%d %H:%M:%S" >> artifacts/update.md
+          echo -e "\n\`\`\`toml" >> artifacts/update.md
+          cat private-build-plans.toml >> artifacts/update.md
+          echo -e "\`\`\`" >> artifacts/update.md
 
           cp output/IosevkaCustom.zip artifacts/
-          cp update.md artifacts/
 
-      - name: Push to output branch
+      - name: Push build results to output branch
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
@@ -58,7 +57,7 @@ jobs:
           fi
 
           cp artifacts/* .
-          git add .
+          git add IosevkaCustom.zip update.md
           git commit -m "Update build $(date)"
           git push origin output --force
 
