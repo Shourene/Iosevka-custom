@@ -1,0 +1,75 @@
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_target:
+        description: "Build target (contents, ttf, ttf-unhinted)"
+        required: true
+        default: "ttf"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache node_modules
+        id: cache-node
+        uses: actions/cache@v4
+        with:
+          path: Iosevka/node_modules
+          key: ${{ runner.os }}-iosevka-${{ hashFiles('Iosevka/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-iosevka-
+
+      - name: Setup deps (cache miss)
+        if: steps.cache-node.outputs.cache-hit != 'true'
+        run: bash setup.sh
+
+      - name: Run build
+        run: bash build.sh ${{ github.event.inputs.build_target }}
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p artifacts
+          echo "### Build Log" > artifacts/update.md
+          date -u +"%Y-%m-%d %H:%M:%S UTC" >> artifacts/update.md
+          echo -e "\n\`\`\`toml" >> artifacts/update.md
+          cat private-build-plans.toml >> artifacts/update.md
+          echo -e "\`\`\`" >> artifacts/update.md
+
+          mv IosevkaCustom.zip artifacts/
+
+      - name: Push build results to output branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git fetch origin
+          if git show-ref --verify --quiet refs/remotes/origin/output; then
+            git checkout output
+            rm -rf *
+          else
+            git checkout --orphan output
+          fi
+
+          cp artifacts/* .
+          git add -f IosevkaCustom.zip update.md
+          git commit -m "Update build $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          git push origin output --force
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/IosevkaCustom.zip
+          tag_name: ${{ github.run_number }}
+          name: "Release ${{ github.run_number }}"
+          body_path: artifacts/update.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

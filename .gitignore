@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+dist/
+Iosevka/
+output/
+artifacts/
+
+# Archives
+*.zip
+
+# Allow build artifact zip explicitly
+!IosevkaCustom.zip
