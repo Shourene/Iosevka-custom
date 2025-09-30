@@ -30,4 +30,4 @@ cp -r Iosevka/dist/IosevkaCustom/* output/
 rm -rf Iosevka/.git
 
 echo "[INFO] Compress output..."
-zip -r output/IosevkaCustom.zip output/*
+zip -r IosevkaCustom.zip output/*

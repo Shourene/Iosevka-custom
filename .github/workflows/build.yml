@@ -1,4 +1,4 @@
-name: Build Custom Iosevka
+name: Build
 
 on:
   workflow_dispatch:
@@ -41,7 +41,7 @@ jobs:
           cat private-build-plans.toml >> artifacts/update.md
           echo -e "\`\`\`" >> artifacts/update.md
 
-          cp output/IosevkaCustom.zip artifacts/
+          mv IosevkaCustom.zip artifacts/
 
       - name: Push build results to output branch
         run: |
