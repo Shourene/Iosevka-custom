@@ -1,4 +1,4 @@
-# Iosevka Custom Build Script
+# Iosevka Font Builder
 
 This repo provides a script to build **Iosevka Custom Fonts** automatically with GitHub Actions.
 
